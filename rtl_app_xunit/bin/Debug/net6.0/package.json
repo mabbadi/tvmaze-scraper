@@ -1,0 +1,16 @@
+{
+  "name": "rtl_app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+
+    "db-drop": "docker-compose exec backend sh -c \"dotnet \"rtl_app.dll\" db-drop\"",
+    "db-migrate": "docker-compose exec backend sh -c \"dotnet \"rtl_app.dll\" db-migrate\"",
+
+    "es-drop": "docker-compose exec backend sh -c \"dotnet \"rtl_app.dll\" es-drop\"",
+    "es-update": "docker-compose exec backend sh -c \"dotnet \"rtl_app.dll\" es-update\""
+  },
+  "author": "",
+  "license": "ISC"
+}
