@@ -19,6 +19,7 @@ git clone https://github.com/mabbadi/tvmaze-scraper
 - Install dependencies
 ```
 cd tvmaze-scraper
+cd rtl_app
 npm install
 ```
 - Setup databases
@@ -52,6 +53,38 @@ To meet the business requirements, the REST API must fulfill two specific criter
 Provides the list of most relevant TV shows for the provided query:
 - `page`: the page to be presented (default value is **1**)
 The default `size` is ***10***. Note this value is fixed, but can be exported to the API if necessary.
+
+# Testing
+
+## Unit test
+### xunit
+To run xunit test:
+```
+cd tvmaze-scraper
+cd rtl_app_xunit
+dotnet test
+```
+
+## Load test
+### Locust installation
+Only the first time, go to:
+```
+cd tvmaze-scraper
+cd locust_load_test
+```
+and run:
+```
+pip3 install locust
+```
+
+### Locust run
+To run the load test:
+```
+cd tvmaze-scraper
+cd locust_load_test
+locust
+```
+Once running, open the url shown in the terminal on your browser and setup the desired parameters to run the test. The script we are using for this basic test is located on the root of this folder and is called `locustfile.py`.
 
 # System diagram
 <img src="/application structure.jpg" alt="Alt text" title="Optional title">
