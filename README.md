@@ -52,3 +52,6 @@ To meet the business requirements, the REST API must fulfill two specific criter
 Provides the list of most relevant TV shows for the provided query:
 - `page`: the page to be presented (default value is **1**)
 The default `size` is ***10***. Note this value is fixed, but can be exported to the API if necessary.
+
+# System diagram
+![Screenshot](application structure.jpg)
