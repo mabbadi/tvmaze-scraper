@@ -54,4 +54,4 @@ Provides the list of most relevant TV shows for the provided query:
 The default `size` is ***10***. Note this value is fixed, but can be exported to the API if necessary.
 
 # System diagram
-![Screenshot](application structure.jpg)
+<img src="/application structure.jpg" alt="Alt text" title="Optional title">
