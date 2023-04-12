@@ -44,21 +44,18 @@ public static class ElasticSearchExtensions
     public static void AddDefaultMappings(ConnectionSettings settings, string indexName)
     {
         Console.WriteLine("Running AddDefaultMappings");
-        ProductsElasticExtensions.AddDefaultMappings(settings, indexName);
         TvMazeElasticExtensions.AddDefaultMappings(settings, indexName);
     }
 
     public static void DeleteIndex(IElasticClient client, string indexName)
     {
         Console.WriteLine("Running DeleteIndex");
-        ProductsElasticExtensions.DeleteIndex(client, indexName);
         TvMazeElasticExtensions.DeleteIndex(client, indexName);
     }
 
     public static void CreateIndex(IElasticClient client, string indexName)
     {
         Console.WriteLine("Running CreateIndex");
-        ProductsElasticExtensions.CreateIndex(client, indexName);
         TvMazeElasticExtensions.CreateIndex(client, indexName);
     }
 

@@ -49,7 +49,6 @@ public class Startup
 
         
 
-        services.AddTransient<IProductStorage, ElasticProduct>();
         services.AddTransient<ITvMazeStorage, ElasticTvMaze>();
         services.AddTransient<IConsumer, Consumer>();
 
