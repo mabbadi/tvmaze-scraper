@@ -2,17 +2,13 @@ using Microsoft.Extensions.Options;
 using Nest;
 
 public record ElasticProduct(IElasticClient elasticClient,
+                             ILogger<ElasticProduct> logger,
                              IOptions<ApplicationLogging> applicationLogging) : IProductStorage
 {
 
     private void Log(string message, System.ConsoleColor color = ConsoleColor.Yellow)
     {
-        if (applicationLogging != null && applicationLogging.Value.logElastic)
-        {
-            Console.ForegroundColor = color;
-            Console.WriteLine($"{message} - {DateTime.Now}");
-            Console.ResetColor(); // reset console color to default
-        }
+        logger.Log(message, () => applicationLogging != null && applicationLogging.Value.logElastic, color);
     }
     public async Task AddProduct(Product product)
     {

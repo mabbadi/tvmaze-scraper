@@ -10,17 +10,14 @@ using System.Reflection;
 
 public record ElasticTvMaze(IElasticClient elasticClient,
                             RTLConsumerContext context,
+                            ILogger<ElasticTvMaze> logger,
                             IOptions<ApplicationLogging> applicationLogging) : ITvMazeStorage
 {
 
     private void Log(string message, System.ConsoleColor color = ConsoleColor.Yellow)
     {
-        if (applicationLogging != null && applicationLogging.Value.logElastic)
-        {
-            Console.ForegroundColor = color;
-            Console.WriteLine($"{message} - {DateTime.Now}");
-            Console.ResetColor(); // reset console color to default
-        }
+        logger.Log(message, () => applicationLogging != null && applicationLogging.Value.logElastic, color);
+
     }
 
     public async Task LoadData(List<ShowDetails> documents)

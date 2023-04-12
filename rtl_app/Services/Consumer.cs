@@ -9,21 +9,17 @@ using Docker.DotNet.Models;
 using System.Diagnostics;
 using StackExchange.Redis;
 
-public record ConsumerOne(RTLConsumerContext context,
+public record Consumer(RTLConsumerContext context,
                           ITvMazeStorage iTvMazeStorage,
                           IConnectionMultiplexer _redis,
+                          ILogger<Consumer> logger,
                           IOptions<ApplicationInfo> applicationInfo,
                           IOptions<ApplicationLogging> applicationLogging) : IConsumer
 //assumption is that this consumer processes TVMazeEpisodes
 {
     private void Log(string message, System.ConsoleColor color = ConsoleColor.Yellow)
     {
-        if (applicationLogging != null && applicationLogging.Value.logConsumer)
-        {
-            Console.ForegroundColor = color;
-            Console.WriteLine($"{message} - {DateTime.Now}");
-            Console.ResetColor(); // reset console color to default
-        }
+        logger.Log(message, () => applicationLogging != null && applicationLogging.Value.logConsumer, color);
     }
     public async Task LoadUrls(bool forceLoad = false)
     {
@@ -115,7 +111,7 @@ public record ConsumerOne(RTLConsumerContext context,
             context.SaveChanges();
             //load documents associated to ok urls in iTvMazeStorage -> load into elastic for example
             await iTvMazeStorage.LoadData(shows);
-            Log($"Consumer logi done.");
+            Log($"ProcessData done.");
 
         }
         catch (Exception e)

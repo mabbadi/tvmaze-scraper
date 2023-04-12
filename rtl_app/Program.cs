@@ -59,6 +59,7 @@ namespace rtl
                   var services = scope.ServiceProvider;
                   var context = services.GetRequiredService<RTLConsumerContext>();
                   context.Database.Migrate();
+                  Console.WriteLine("Database migrated");
                   return 0;
               }
           });
@@ -76,6 +77,7 @@ namespace rtl
                   var services = scope.ServiceProvider;
                   var context = services.GetRequiredService<RTLConsumerContext>();
                   context.Database.EnsureDeleted();
+                  Console.WriteLine("Database dropped");
                   return 0;
               }
           });

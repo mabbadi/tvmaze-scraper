@@ -51,7 +51,7 @@ public class Startup
 
         services.AddTransient<IProductStorage, ElasticProduct>();
         services.AddTransient<ITvMazeStorage, ElasticTvMaze>();
-        services.AddTransient<IConsumer, ConsumerOne>();
+        services.AddTransient<IConsumer, Consumer>();
 
         //configure background timer job
         services.AddHostedService<BackgroundJob>();
