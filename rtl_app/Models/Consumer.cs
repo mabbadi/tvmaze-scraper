@@ -1,12 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 
-public class Consumer
-{
-    
-    public int Id { get; set; }
-    public bool Busy { get; set; }
-    public DateTime BusySince { get; set; }
-}
 
 public class ConsumerQueueItem
 {

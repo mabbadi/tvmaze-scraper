@@ -5,18 +5,16 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-public record BackgroundJob(IServiceScopeFactory scopeFactory, IOptions<ApplicationInfo> applicationInfo, IOptions<ApplicationLogging> applicationLogging) : IHostedService, IDisposable
+public record BackgroundJob(IServiceScopeFactory scopeFactory,  
+                            ILogger<BackgroundJob> logger,
+                            IOptions<ApplicationInfo> applicationInfo, IOptions<ApplicationLogging> applicationLogging) : IHostedService, IDisposable
 {
     private Timer timer;
 
     private void Log(string message, System.ConsoleColor color = ConsoleColor.Yellow)
     {
-        if (applicationLogging != null && applicationLogging.Value.logBackgroundJobService)
-        {
-            Console.ForegroundColor = color;
-            Console.WriteLine($"{message} - {DateTime.Now}");
-            Console.ResetColor(); // reset console color to default
-        }
+        logger.Log(message, () => applicationLogging != null && applicationLogging.Value.logBackgroundJobService, color);
+
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -59,6 +57,7 @@ public record BackgroundJob(IServiceScopeFactory scopeFactory, IOptions<Applicat
             // Handle exceptions thrown by the async method
             Log("Something went wrong in the background job. " + ex.Message, ConsoleColor.Red);
         }
+        Log("Done with background job");
     }
 
     public void Dispose()

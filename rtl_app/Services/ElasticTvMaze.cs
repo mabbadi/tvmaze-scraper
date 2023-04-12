@@ -7,20 +7,19 @@ using System.Text.RegularExpressions;
 using System.Net;
 using Microsoft.Extensions.Options;
 using System.Reflection;
+using Newtonsoft.Json.Linq;
 
 public record ElasticTvMaze(IElasticClient elasticClient,
                             RTLConsumerContext context,
+                            ILogger<ElasticTvMaze> logger,
+                            IOptions<ELKConfiguration> ELKConfiguration,
                             IOptions<ApplicationLogging> applicationLogging) : ITvMazeStorage
 {
 
     private void Log(string message, System.ConsoleColor color = ConsoleColor.Yellow)
     {
-        if (applicationLogging != null && applicationLogging.Value.logElastic)
-        {
-            Console.ForegroundColor = color;
-            Console.WriteLine($"{message} - {DateTime.Now}");
-            Console.ResetColor(); // reset console color to default
-        }
+        logger.Log(message, () => applicationLogging != null && applicationLogging.Value.logElastic, color);
+
     }
 
     public async Task LoadData(List<ShowDetails> documents)
@@ -163,12 +162,12 @@ public record ElasticTvMaze(IElasticClient elasticClient,
                 .Query(query)
               )));
         return response.AllResultingSources()
-            // .Select(p =>
-            // {
-            //     p._embedded.cast = p._embedded.cast.OrderByDescending(c => c.person.birthday).ToList();
-            //     return p;
-            // })
-            .ToList();
+                    .Select(p =>
+                    {
+                        p._embedded.cast = p._embedded.cast.OrderByDescending(c => c.person.birthday).ToList();
+                        return p;
+                    })
+                    .ToList();
     }
 
     public async Task<List<(int, string)>> GetAllShowsUrl()
@@ -213,11 +212,60 @@ public record ElasticTvMaze(IElasticClient elasticClient,
         }
     }
 
-    public async Task<List<string>> FindMissingUrls(List<(int, string)> ids1)
+    public async Task<List<string>> FindMissingUrls(List<(int, string)> fetchedIds)
     {
-        var res = await elasticClient.SearchAsync<ShowDetails>(s => s.Query(q => q.Bool(b => b.Must(mn => mn.Ids(ids => ids.Values(ids1.Select(u => u.Item1.ToString())))))));
-        var idsMatching = res.Hits.Select(h => h.Source.id).ToDictionary(x => x);
-        return ids1.Select(id => !idsMatching.ContainsKey(id.Item1) ? id.Item2 : null).Where(i => i != null).ToList()!;
+
+
+        Console.WriteLine($"Open new pit");
+        var openPit = await elasticClient.OpenPointInTimeAsync($"{ELKConfiguration.Value.index}-show-details", d => d.KeepAlive("1m"));
+        var pit = openPit.Id;
+
+        Console.WriteLine($"Read all docs from index ..");
+        // we will start reading docs from the beginning
+        var searchAfter = 0;
+        var indexedShowDetails = new List<ShowDetails>();
+        try
+        {
+            while (true)
+            {
+                var searchResponse = await elasticClient.SearchAsync<ShowDetails>(s => s
+                    // disable the tracking of total hits to speed up pagination.
+                    .TrackTotalHits(false)
+                    .Size(10000)
+                    .Source(sr => sr
+                        .Includes(f => f
+                            .Field(a => a.id)))
+                    // pass pit id and extend lifetime of it by another minute
+                    .PointInTime(pit, d => d.KeepAlive("1m"))
+                    .Query(q => q.MatchAll())
+                    // sort by Id filed so we can pass last retrieved id to next search
+                    .Sort(sort => sort.Ascending(f => f.id))
+                    // pass last id we received from prev. search request so we can keep retrieving more documents
+                    .SearchAfter(searchAfter));
+
+                // if we didn't receive any docs just stop processing
+                if (searchResponse.Documents.Count == 0)
+                {
+                    break;
+                }
+
+                Console.WriteLine($"Id [{searchResponse.Documents.FirstOrDefault()?.id}..{searchResponse.Documents.LastOrDefault()?.id}]");
+                searchAfter = searchResponse.Documents.LastOrDefault()?.id ?? 0;
+                indexedShowDetails.AddRange(searchResponse.Documents);
+            }
+        }
+        finally
+        {
+            Console.WriteLine($"Close pit");
+            var closePit = await elasticClient.ClosePointInTimeAsync(d => d.Id(pit));
+        }
+
+
+
+        var indexedShowDetailsIds = indexedShowDetails.Select(h => h.id).ToDictionary(x => x);
+        var missingIds = fetchedIds.Select(id => !indexedShowDetailsIds.ContainsKey(id.Item1) ? id.Item2 : null).Where(i => i != null).ToList();
+        Console.WriteLine("Missing ids count: "+missingIds.Count);
+        return missingIds;
     }
 
     private HttpClient testClient { get; set; }
@@ -233,4 +281,51 @@ public record ElasticTvMaze(IElasticClient elasticClient,
         var responseBody = await response.Content.ReadAsStringAsync();
         return responseBody;
     }
+
+
+
+    public static Dictionary<string, dynamic> DeserializeToDictionary(string json)
+    {
+        var values = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(json);
+        var values2 = new Dictionary<string, object>();
+        if (values == null)
+        {
+            return values2;
+        }
+        foreach (KeyValuePair<string, dynamic> d in values)
+        {
+            // if (d.Value.GetType().FullName.Contains("Newtonsoft.Json.Linq.JObject"))
+            if (d.Value is JObject)
+            {
+                values2.Add(d.Key, DeserializeToDictionary(d.Value.ToString()));
+            }
+            else if (d.Value is JProperty)
+            {
+                values2.Add(d.Key, DeserializeToDictionary(d.Value.ToString()));
+            }
+            else if (d.Value is JArray)
+            {
+                List<dynamic> arrValues = new List<dynamic>();
+                foreach (dynamic v in d.Value)
+                {
+                    try
+                    {
+
+                        arrValues.Add(DeserializeToDictionary(v.ToString()));
+                    }
+                    catch (Exception e)
+                    {
+                        arrValues.Add(v.ToString());
+                    }
+                }
+                values2.Add(d.Key, arrValues);
+            }
+            else
+            {
+                values2.Add(d.Key, d.Value);
+            }
+        }
+        return values2;
+    }
+
 }

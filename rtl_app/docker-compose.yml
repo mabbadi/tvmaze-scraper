@@ -9,7 +9,8 @@ services:
       - logger.level=WARN
       - xpack.security.enabled=false
       - http.cors.enabled=true
-      - http.cors.allow-origin=*      
+      - http.cors.allow-origin=*
+      - "ES_JAVA_OPTS=-Xmx512m -Xms512m"
     ulimits:
       memlock:
         soft: -1
