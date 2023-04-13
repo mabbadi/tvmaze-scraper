@@ -1,12 +1,9 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+using StackExchange.Redis;
 
-public record BackgroundJob(IServiceScopeFactory scopeFactory,  
+public record BackgroundJob(IServiceScopeFactory scopeFactory,
                             ILogger<BackgroundJob> logger,
+                            IConnectionMultiplexer _redis,
                             IOptions<ApplicationInfo> applicationInfo, IOptions<ApplicationLogging> applicationLogging) : IHostedService, IDisposable
 {
     private Timer timer;
@@ -47,9 +44,29 @@ public record BackgroundJob(IServiceScopeFactory scopeFactory,
             // Do something every 10 seconds
             using (var scope = scopeFactory.CreateScope())
             {
-                var context = scope.ServiceProvider.GetRequiredService<IConsumer>();
-                // Use context to access database or other scoped services
-                await context.ProcessDataIncremental();
+
+                var db = _redis.GetDatabase();
+                var acquiredLock = db.StringSet("my-lock-key", "locked", TimeSpan.FromSeconds(20), When.NotExists);
+                if (acquiredLock)
+                {
+                    try
+                    {
+                        var consumer = scope.ServiceProvider.GetRequiredService<IConsumer>();
+                        // Use context to access database or other scoped services
+                        await consumer.ProcessDataIncremental();
+                    }
+                    finally
+                    {
+                        // Release the lock
+                        Log("Release the lock");
+                        db.KeyDelete("my-lock-key");
+                    }
+                }
+                else
+                {
+                    // Another container has the lock
+                    Log("Unable to acquire lock");
+                }
             }
         }
         catch (Exception ex)

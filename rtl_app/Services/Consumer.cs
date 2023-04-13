@@ -1,17 +1,10 @@
 using System.Net;
-using Hangfire;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using rtl_app.Context;
-using Docker.DotNet;
-using Docker.DotNet.Models;
-using System.Diagnostics;
-using StackExchange.Redis;
 
 public record Consumer(RTLConsumerContext context,
                           ITvMazeStorage iTvMazeStorage,
-                          IConnectionMultiplexer _redis,
                           ILogger<Consumer> logger,
                           IOptions<ApplicationInfo> applicationInfo,
                           IOptions<ApplicationLogging> applicationLogging) : IConsumer
@@ -34,14 +27,6 @@ public record Consumer(RTLConsumerContext context,
         context.ConsumerQueue.AddRange(consumerUrls);
         context.SaveChanges();
     }
-    public async Task<string> GetContainerNameAsync(string containerId)
-    {
-        var client = new DockerClientConfiguration().CreateClient();
-
-        var container = await client.Containers.InspectContainerAsync(containerId);
-
-        return container.Name;
-    }
     public async Task ProcessDataIncremental()
     {
 
@@ -51,26 +36,8 @@ public record Consumer(RTLConsumerContext context,
             return;
         }
 
-        var db = _redis.GetDatabase();
-        var acquiredLock = db.StringSet("my-lock-key", "locked", TimeSpan.FromSeconds(20), When.NotExists);
-        if (acquiredLock)
-        {
-            try
-            {
-                await ConsumeLogic();
-            }
-            finally
-            {
-                // Release the lock
-                Log("Release the lock");
-                db.KeyDelete("my-lock-key");
-            }
-        }
-        else
-        {
-            // Another container has the lock
-            Log("Unable to acquire lock");
-        }
+        await ConsumeLogic();
+
     }
 
     private async Task ConsumeLogic()
