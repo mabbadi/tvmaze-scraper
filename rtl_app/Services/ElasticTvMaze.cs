@@ -153,14 +153,18 @@ public record ElasticTvMaze(IElasticClient elasticClient,
         var response = await elasticClient.SearchAsync<ShowDetails>(s => s
             .From((pageNumber - 1) * pageSize)
             .Size(pageSize)
-            .Query(q => q
-              .MultiMatch(m => m
-                .FuzzyTranspositions()
-                .Fuzziness(fuzziness == 1 ? Fuzziness.Auto : Fuzziness.EditDistance(fuzziness))
-                .Lenient()
-                .Fields(fs => fs.Field(f => f.summary))
-                .Query(query)
-              )));
+            .Query(
+                String.IsNullOrEmpty(query) 
+                ? q => q
+                    .MatchAll() 
+                : q => q
+                    .MultiMatch(m => m
+                        .FuzzyTranspositions()
+                        .Fuzziness(fuzziness == 1 ? Fuzziness.Auto : Fuzziness.EditDistance(fuzziness))
+                        .Lenient()
+                        .Fields(fs => fs.Field(f => f.summary))
+                        .Query(query)
+                    )));
         return response.AllResultingSources()
                     .Select(p =>
                     {

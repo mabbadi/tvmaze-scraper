@@ -19,7 +19,7 @@ public class TvMazeController : ControllerBase
 
 
     [HttpGet("search/shows", Name = "SearchShows")]
-    public async Task<IActionResult> Search([FromQuery] string q, [FromQuery] int? page)
+    public async Task<IActionResult> Search([FromQuery] int? page = 1, [FromQuery] string? q = "")
     {
         return Ok(await tvMazeStorage.Search(q, 2, page.HasValue ? page.Value : 1));
     }
